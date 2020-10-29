@@ -1,6 +1,7 @@
 import numpy as np
 import os, sys
 import tensorflow as tf
+# import tensorflow.compat.v1 as tf
 import argparse
 from functools import reduce
 import math
@@ -13,6 +14,9 @@ from keras import backend as K
 from keras.models import load_model
 
 from dataset import read_data_sets, embedding_lookup
+
+import warnings
+warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser("hyper-network embedding", fromfile_prefix_chars='@')
 parser.add_argument('--data_path', type=str, help='Directory to load data.')
@@ -137,12 +141,13 @@ def load_hypergraph(data_path):
     return h
 
 if __name__ == '__main__':
+    warnings.filterwarnings("ignore")
     args = parser.parse_args()
     if args.options is not None:
         args = load_config(args.options)
     if args.seed is not None:
         np.random.seed(args.seed)
-    dataset = read_data_sets(args.data_path)
+    dataset = read_data_sets(args.data_path) # embedding size [[146,75],[70,151],[5,216]
     args.dim_feature = [sum(dataset.train.nums_type)-n for n in dataset.train.nums_type]
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True

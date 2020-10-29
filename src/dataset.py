@@ -40,17 +40,18 @@ class DataSet(object):
                 assert self.index_in_epoch <= self.nums_examples
             end = self.index_in_epoch
             neg_data = []
-            for i in range(start, end):
+            # 采样
+            for i in range(start, end): # 每个正样本对一个num_neg_samples 个负样本
                 n_neg = 0
-                while(n_neg < num_neg_samples):
+                while(n_neg < num_neg_samples): # 制作负样本，
                     ### warning !!! we need deepcopy to copy list
                     index = copy.deepcopy(self.edge[i])
                     mode = np.random.rand()
-                    if mode < pair_radio:
+                    if mode < pair_radio: # 有成对信息的负样本
                         type_ = np.random.randint(3)
                         node = np.random.randint(self.nums_type[type_])
                         index[type_] = node
-                    else:
+                    else: # 全随机的负样本
                         types_ = np.random.choice(3, 2, replace=False)
                         node_1 = np.random.randint(self.nums_type[types_[0]])
                         node_2 = np.random.randint(self.nums_type[types_[1]])
@@ -61,12 +62,12 @@ class DataSet(object):
                     n_neg += 1
                     neg_data.append(index)
             if len(neg_data) > 0:
-                batch_data = np.vstack((self.edge[start:end], neg_data))
+                batch_data = np.vstack((self.edge[start:end], neg_data))#[16:15*5]=positive:negative
                 nums_batch = len(batch_data)
                 labels = np.zeros(nums_batch)
-                labels[0:end-start] = 1
+                labels[0:end-start] = 1 # 正样本 标签为1
                 perm = np.random.permutation(nums_batch)
-                batch_data = batch_data[perm]
+                batch_data = batch_data[perm] # 打乱顺序
                 labels = labels[perm]
             else:
                 batch_data = self.edge[start:end]
@@ -96,12 +97,15 @@ def read_data_sets(train_dir):
     node_cluster = data['node_cluster'] if 'node_cluster' in data else None
     test_labels = data['labels'] if 'labels' in data else None
     del data
-    embeddings = generate_embeddings(train_data.edge, train_data.nums_type)
+    embeddings = generate_embeddings(train_data.edge, train_data.nums_type) # 当前node type H与其他两个H 之间的邻接关系（HH_(other2)^T）
+    # 再经过 列归一化x[:,i]/max(x[:,i] 得到
     return Datasets(train=train_data, test=test_data, embeddings=embeddings, node_cluster=node_cluster,
                 labels=labels, idx_label=idx_label, label_name=label_set)
 
 def generate_H(edge, nums_type):
     nums_examples = len(edge)
+    # csr_matrix((data, (row_ind, col_ind)), [shape=(M, N)])
+    # where data, row_ind and col_ind satisfy the relationship a[row_ind[k], col_ind[k]] = data[k].
     H = [csr_matrix((np.ones(nums_examples), (edge[:, i], range(nums_examples))), shape=(nums_type[i], nums_examples)) for i in range(3)]
     return H
 
@@ -111,8 +115,9 @@ def dense_to_onehot(labels):
 def generate_embeddings(edge, nums_type, H=None):
     if H is None:
         H = generate_H(edge, nums_type)
-    embeddings = [H[i].dot(s_vstack([H[j] for j in range(3) if j != i]).T).astype('float') for i in range(3)]
-    ### 0-1 scaling
+    embeddings = [H[i].dot(s_vstack([H[j] for j in range(3) if j != i]).T).astype('float') for i in range(3)] # dot 矩阵乘法
+    # 得到当前node type H与其他两个H 之间的邻接关系
+    ### 0-1 scaling ， 对每个值除于其对应列的最大值 x[:,i]/max(x[:,i])
     for i in range(3):
         col_max = np.array(embeddings[i].max(0).todense()).flatten()
         _, col_index = embeddings[i].nonzero()

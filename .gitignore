@@ -1,3 +1,5 @@
 result/
 *.pyc
 .*.swp
+*.xml
+*.iml
